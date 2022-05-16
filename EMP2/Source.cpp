@@ -152,7 +152,7 @@ private:
 
 	double getAvgLambda(int i)
 	{
-		return (getLambda(fragmentArray[i], nodeArray[i], q[i]) + getLambda(fragmentArray[i + 1], nodeArray[i + 1], q[i])) / 2;
+		return (getLambda(fragmentArray[i], nodeArray[i], q[i]) + getLambda(fragmentArray[i + 1], nodeArray[i + 1], q[i + 1])) / 2;
 	}
 
 	double getAvgGamma(int i)
@@ -286,9 +286,11 @@ int main()
 	fem.fragmentRead();
 	fem.s1Read();
 
-	for (int i = 0; i < 1000; i++)
+
+	for (int i = 0; i < 10000; i++)
 	{
 		fem.iter();
+		fem.printQ();
 	}
 
 	fem.printQ();

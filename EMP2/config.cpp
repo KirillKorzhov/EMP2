@@ -13,10 +13,10 @@ double getGamma(int i, double x)
 
 double getF(double x)
 {
-	return x*x - 6*x*x;
+	return x - 1;
 }
 
 double getS1(double x)
 {
-	return x*x;
+	return x;
 }
