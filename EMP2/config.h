@@ -1,8 +1,8 @@
 #pragma once
 
-double getLambda(double x);
+double getLambda(int i, double u,double x);
 
-double getGamma(double x);
+double getGamma(int i, double x);
 
 double getF(double x);
 

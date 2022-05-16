@@ -30,5 +30,6 @@
   <ItemGroup>
     <Text Include="node.txt" />
     <Text Include="s1.txt" />
+    <Text Include="fragment.txt" />
   </ItemGroup>
 </Project>

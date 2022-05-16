@@ -146,6 +146,7 @@
     <ClInclude Include="config.h" />
   </ItemGroup>
   <ItemGroup>
+    <Text Include="fragment.txt" />
     <Text Include="node.txt" />
     <Text Include="s1.txt" />
   </ItemGroup>
