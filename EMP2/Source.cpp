@@ -1,8 +1,11 @@
 #include <iostream>
 #include <fstream>
 #include <locale>
+#include <vector>
 
 #include "config.h"
+#include "BandMatrix.h"
+#include "matrixCalc.h"
 
 using namespace std;
 
@@ -13,34 +16,22 @@ string const s1txt = "s1.txt";
 class FEM
 {
 public:
-	~FEM()
-	{
-		delete[] nodeArray;
-		delete[] b;
-		delete[] diag;
-		delete[] top;
-		delete[] bot;
-		delete[] q;
-		delete[] fragmentArray;
-		delete[] s1Array;
-	}
-
 	void nodeRead()
 	{
 		ifstream in;
 		in.open(nodetxt);
+		int nodeCount;
 		in >> nodeCount;
 
-		nodeArray = new double[nodeCount];
-		b = new double[nodeCount];
-		q = new double[nodeCount]();
-		diag = new double[nodeCount];//у нас одномерна€ задача, так что матрица будет трехдиагональна€. ‘ормат матрица ленточный - это уже условие задачи
-		top = new double[nodeCount];
-		bot = new double[nodeCount]; 
-		fragmentArray = new int[nodeCount];
+		nodeVec.resize(nodeCount);
+		b.resize(nodeCount);
+		q.resize(nodeCount);
+		qPrev.resize(nodeCount);
+		bandMatrix.resize(nodeCount);
+		fragmentVec.resize(nodeCount);
 
 		for (int i = 0; i < nodeCount; i++)
-			in >> nodeArray[i];
+			in >> nodeVec[i];
 		in.close();
 	}
 
@@ -49,8 +40,8 @@ public:
 		ifstream in;
 		in.open(fragmenttxt);
 
-		for (int i = 0; i < nodeCount; i++)
-			in >> fragmentArray[i];
+		for (int i = 0; i < nodeVec.size(); i++)
+			in >> fragmentVec[i];
 
 		in.close();
 	}
@@ -59,123 +50,85 @@ public:
 	{
 		ifstream in;
 		in.open(s1txt);
+		int s1Count;
 		in >> s1Count;
 
-		s1Array = new int[s1Count];
+		s1Vec.resize(s1Count);
 
 		for (int i = 0; i < s1Count; i++)
-			in >> s1Array[i];
+			in >> s1Vec[i];
 
 		in.close();
 	}
 
-	void iter()
+	int simpleIter()
+	{
+		addFToRight();
+		double normDenominator = norm(b);
+		int i = 0;
+		for (; i < iterMax; i++)
+		{
+			double dis = iter(normDenominator);
+			alphaMULTx(relaxParam, q);
+			alphaMULTx(1 - relaxParam, qPrev);
+			vecADDvec(q, qPrev);
+			if (dis < eps)
+			{
+				break;
+			}
+			cout << dis << endl;
+			q.swap(qPrev);
+		}
+		return i;
+	}
+
+	double iter(double normDenominator)
 	{
 		globalToZero();
 		makeGlobal();
-		matrixToLU();
-		solveLUx();
-	}
-
-	void printMatrix()
-	{
-		cout << endl;
-		cout << fixed;
-		cout.precision(2);
-
-		cout << diag[0] << "  " << top[0];
-		int tmp1 = 0;
-		int tmp2 = nodeCount - 2;
-		for (int i = 0; i < tmp2; i++)
-		{
-			cout << "  " << "0.00";
-		}
-		cout << endl;
-		tmp2--;
-
-		for (int i = 1; i < nodeCount - 1; i++)
-		{
-			for (int j = 0; j < tmp1; j++)
-			{
-				cout << "0.00" << "  ";
-			}
-			cout << bot[i] << "  " << diag[i] << "  " << top[i];
-			for (int j = 0; j < tmp2; j++)
-			{
-				cout << "  " << "0.00";
-			}
-			cout << endl;
-			tmp1++;
-			tmp2--;
-		}
-
-		for (int j = 0; j < tmp1; j++)
-		{
-			cout << "0.00" << "  ";
-		}
-		cout << bot[nodeCount - 1] << "  " << diag[nodeCount - 1];
-		cout << endl << endl;
-		cout << defaultfloat;
+		double prevDiscrepancy = discrepancy(normDenominator);
+		bandMatrix.matrixToLU();
+		bandMatrix.solveLUx(b, q);
+		return prevDiscrepancy;
 	}
 
 	void printQ()
 	{
-		for (int i = 0; i < nodeCount; i++)
+		for (int i = 0; i < q.size(); i++)
 		{
 			cout << q[i] << "  ";
 		}
 		cout << endl;
 	}
 
-
-	void printB()
-	{
-		for (int i = 0; i < nodeCount; i++)
-		{
-			cout << b[i] << "  ";
-		}
-		cout << endl;
-	}
-
 private:
-	int nodeCount = 0;
-	double* nodeArray = NULL;
-	double* b = NULL;
-	double* diag = NULL;
-	double* top = NULL;
-	double* bot = NULL;
-	double* q = NULL;
-	int* fragmentArray = NULL;
-	int s1Count = 0;
-	int* s1Array = NULL;
-
+	vector <double> nodeVec;
+	BandMatrix bandMatrix;
+	vector <double>	b;
+	vector <double>	q;
+	vector <double> qPrev;
+	vector <int> fragmentVec;
+	vector <int> s1Vec;
 
 	double getAvgLambda(int i)
 	{
-		return (getLambda(fragmentArray[i], nodeArray[i], q[i]) + getLambda(fragmentArray[i + 1], nodeArray[i + 1], q[i + 1])) / 2;
+		return (getLambda(fragmentVec[i], nodeVec[i], qPrev[i]) + getLambda(fragmentVec[i + 1], nodeVec[i + 1], qPrev[i + 1])) / 2;
 	}
 
 	double getAvgGamma(int i)
 	{
-		return (getGamma(fragmentArray[i], nodeArray[i]) + getGamma(fragmentArray[i + 1], nodeArray[i + 1])) / 2;
+		return (getGamma(fragmentVec[i], nodeVec[i]) + getGamma(fragmentVec[i + 1], nodeVec[i + 1])) / 2;
 	}
 
 	double getStep(int i)
 	{
-		return nodeArray[i + 1] - nodeArray[i];
+		return nodeVec[i + 1] - nodeVec[i];
 	}
 	
 	void globalToZero()
 	{
-		vecToZero(b);
-		vecToZero(diag);
-		vecToZero(top);
-		vecToZero(bot);
-	}
-
-	void vecToZero(void* vec)
-	{
-		memset(vec, 0, sizeof(vec) * nodeCount);
+		fill(b.begin(), b.end(), 0);
+		bandMatrix.toZero();
 	}
 
 	void makeGlobal()
@@ -183,22 +136,6 @@ private:
 		makeLeft();
 		makeRight();
 		addS1();
-	}
-
-	void solveLUx()
-	{
-		solveLy(q, b);
-		solveUx(q, q);
-
-	}
-
-	void matrixToLU()
-	{
-		for (int i = 1; i < nodeCount; i++)
-		{
-			bot[i] = bot[i] / diag[i - 1];
-			diag[i] = diag[i] - bot[i] * top[i - 1];
-		}
 	}
 
 	void makeLeft()
@@ -214,65 +151,72 @@ private:
 
 	void addGToLeft()
 	{
-		for (int i = 0; i < nodeCount - 1; i++)
+		for (int i = 0; i < nodeVec.size() - 1; i++)
 		{
 			double tmp = getAvgLambda(i) / getStep(i);
-			diag[i] += tmp;
-			top[i] -= tmp;
-			bot[i + 1] -= tmp;
-			diag[i + 1] += tmp;
+			bandMatrix.diag[i] += tmp;
+			bandMatrix.top[i] -= tmp;
+			bandMatrix.bot[i + 1] -= tmp;
+			bandMatrix.diag[i + 1] += tmp;
 		}
 	}
 
 	void addMToLeft()
 	{
-		for (int i = 0; i < nodeCount - 1; i++)
+		for (int i = 0; i < nodeVec.size() - 1; i++)
 		{
 			double tmp = getAvgGamma(i) * getStep(i) / 6;
-			diag[i] += 2 * tmp;
-			top[i] += tmp;
-			bot[i + 1] += tmp;
-			diag[i + 1] += 2 * tmp;
+			bandMatrix.diag[i] += 2 * tmp;
+			bandMatrix.top[i] += tmp;
+			bandMatrix.bot[i + 1] += tmp;
+			bandMatrix.diag[i + 1] += 2 * tmp;
 		}
 	}
 
 	void addFToRight()
 	{
-		for (int i = 0; i < nodeCount - 1; i++)
+		for (int i = 0; i < nodeVec.size() - 1; i++)
 		{
-			b[i] += (2 * getF(nodeArray[i]) + getF(nodeArray[i + 1])) * getStep(i) / 6;
-			b[i + 1] += (getF(nodeArray[i]) + 2 * getF(nodeArray[i + 1])) * getStep(i) / 6;
+			b[i] += (2 * getF(nodeVec[i]) + getF(nodeVec[i + 1])) * getStep(i) / 6;
+			b[i + 1] += (getF(nodeVec[i]) + 2 * getF(nodeVec[i + 1])) * getStep(i) / 6;
 		}
 	}
 
 	void addS1()
 	{
-		for (int i = 0; i < s1Count; i++)
+		for (int i = 0; i < s1Vec.size(); i++)
 		{
-			diag[s1Array[i]] = 1;
-			top[s1Array[i]] = 0;
-			bot[s1Array[i]] = 0;
+			bandMatrix.diag[s1Vec[i]] = 1;
+			bandMatrix.top[s1Vec[i]] = 0;
+			bandMatrix.bot[s1Vec[i]] = 0;
 
-			b[s1Array[i]] = getS1(nodeArray[s1Array[i]]);
+			b[s1Vec[i]] = getS1(nodeVec[s1Vec[i]]);
 		}
 	}
 
-	void solveUx(double* x, double* b)
+	double discrepancy()
 	{
-		x[nodeCount - 1] = b[nodeCount - 1];
-		for (int i = nodeCount - 2; i >= 0; i--)
-		{
-			x[i] = (b[i] - top[i] * x[i + 1]) / diag[i];
-		}
+		return normAqSUBb() / norm(b);
 	}
 
-	void solveLy(double* y, double* b)
+	double discrepancy(double normDenominator)
 	{
-		y[0] = b[0];
-		for (int i = 1; i < nodeCount; i++)
+		return normAqSUBb() / normDenominator;
+	}
+
+	double normAqSUBb()
+	{
+		int end = qPrev.size() - 1;
+		double tmp = (bandMatrix.diag[0] * qPrev[0] + bandMatrix.top[0] * qPrev[1] - b[0]);
+		double result = tmp * tmp;
+		for (int i = 1; i < end; i++)
 		{
-			y[i] = b[i] - y[i - 1] * bot[i];
+			tmp = bandMatrix.bot[i] * qPrev[i - 1] + bandMatrix.diag[i] * qPrev[i] + bandMatrix.top[i] * qPrev[i + 1] - b[i];
+			result += tmp * tmp;
 		}
+		tmp = bandMatrix.bot[end] * qPrev[end - 1] + bandMatrix.diag[end] * qPrev[end] - b[end];
+		result += tmp * tmp;
+		return sqrt(result);
 	}
 
 };
@@ -286,12 +230,7 @@ int main()
 	fem.fragmentRead();
 	fem.s1Read();
 
-
-	for (int i = 0; i < 10000; i++)
-	{
-		fem.iter();
-		fem.printQ();
-	}
+	cout << fem.simpleIter() << endl;
 
 	fem.printQ();
 

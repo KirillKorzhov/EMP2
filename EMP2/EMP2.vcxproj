@@ -139,11 +139,15 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="BandMatrix.cpp" />
     <ClCompile Include="config.cpp" />
+    <ClCompile Include="matrixCalc.cpp" />
     <ClCompile Include="Source.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="BandMatrix.h" />
     <ClInclude Include="config.h" />
+    <ClInclude Include="matrixCalc.h" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="fragment.txt" />
