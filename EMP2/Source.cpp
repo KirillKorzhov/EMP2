@@ -12,6 +12,8 @@ using namespace std;
 string const nodetxt = "node.txt";
 string const fragmenttxt = "fragment.txt";
 string const s1txt = "s1.txt";
+string const s2txt = "s2.txt";
+string const s3txt = "s3.txt";
 
 class FEM
 {
@@ -69,16 +71,22 @@ public:
 		for (; i < iterMax; i++)
 		{
 			double dis = iter(normDenominator);
-			alphaMULTx(relaxParam, q);
-			alphaMULTx(1 - relaxParam, qPrev);
-			vecADDvec(q, qPrev);
-			if (dis < eps)
+			if(dis < eps)
 			{
+				cout << "exit due to a small discrepancy" << endl;
 				break;
 			}
-			cout << dis << endl;
+			vecADDvecWithRelaxParam(relaxParam, q, qPrev);
+			if(normxSUBRACTy(q, qPrev)/norm(q) < delta)
+			{
+				i++;
+				cout << "exit due to stagnation" << endl;
+				break;
+			}
 			q.swap(qPrev);
+			cout << "discrepancy on [" << i+1 << "] iteration:" << dis << endl;
 		}
+		q.swap(qPrev);
 		return i;
 	}
 
@@ -94,9 +102,10 @@ public:
 
 	void printQ()
 	{
+		cout << "result:" << endl;
 		for (int i = 0; i < q.size(); i++)
 		{
-			cout << q[i] << "  ";
+			cout << "u[" << nodeVec[i] << "]=" << q[i] << "\t";
 		}
 		cout << endl;
 	}
@@ -142,11 +151,14 @@ private:
 	{
 		addGToLeft();
 		addMToLeft();
+		addS3ToLeft();
 	}
 
 	void makeRight()
 	{
 		addFToRight();
+		addS2ToRight();
+		addS3ToRight();
 	}
 
 	void addGToLeft()
@@ -173,12 +185,48 @@ private:
 		}
 	}
 
+	void addS3ToLeft()
+	{
+		if (isS3Left)
+		{
+			bandMatrix.diag[0] += getBeta(fragmentVec[0], nodeVec[0], qPrev[0]);
+		}
+		if (isS3Right)
+		{
+			bandMatrix.diag[bandMatrix.diag.size() - 1] += getBeta(fragmentVec[bandMatrix.diag.size() - 1], nodeVec[bandMatrix.diag.size() - 1], qPrev[bandMatrix.diag.size() - 1]);
+		}
+	}
+
 	void addFToRight()
 	{
 		for (int i = 0; i < nodeVec.size() - 1; i++)
 		{
-			b[i] += (2 * getF(nodeVec[i]) + getF(nodeVec[i + 1])) * getStep(i) / 6;
-			b[i + 1] += (getF(nodeVec[i]) + 2 * getF(nodeVec[i + 1])) * getStep(i) / 6;
+			b[i] += (2 * getF(fragmentVec[i], nodeVec[i]) + getF(fragmentVec[i+1], nodeVec[i + 1])) * getStep(i) / 6;
+			b[i + 1] += (getF(fragmentVec[i], nodeVec[i]) + 2 * getF(fragmentVec[i + 1], nodeVec[i + 1])) * getStep(i) / 6;
+		}
+	}
+
+	void addS2ToRight()
+	{
+		if (isS2Left)
+		{
+			b[0] += getTheta(fragmentVec[0], nodeVec[0], qPrev[0]);
+		}
+		if (isS2Right)
+		{
+			b[b.size() - 1] += getTheta(fragmentVec[b.size() - 1], nodeVec[b.size() - 1], qPrev[b.size() - 1]);
+		}
+	}
+
+	void addS3ToRight()
+	{
+		if (isS3Left)
+		{
+			b[0] += getBeta(fragmentVec[0], nodeVec[0], qPrev[0]) * getUb(fragmentVec[0], nodeVec[0], qPrev[0]);
+		}
+		if (isS3Right)
+		{
+			b[b.size() - 1] += getBeta(fragmentVec[b.size() - 1], nodeVec[b.size() - 1], qPrev[b.size() - 1]) * getUb(fragmentVec[b.size() - 1], nodeVec[b.size() - 1], qPrev[b.size() - 1]);
 		}
 	}
 
@@ -190,7 +238,7 @@ private:
 			bandMatrix.top[s1Vec[i]] = 0;
 			bandMatrix.bot[s1Vec[i]] = 0;
 
-			b[s1Vec[i]] = getS1(nodeVec[s1Vec[i]]);
+			b[s1Vec[i]] = getS1(fragmentVec[i], nodeVec[s1Vec[i]]);
 		}
 	}
 
@@ -219,6 +267,18 @@ private:
 		return sqrt(result);
 	}
 
+	double normxSUBRACTy(vector<double> x, vector<double> y)
+	{
+		double result = 0;
+		double tmp = 0;
+		for (int i = 0; i < x.size(); i++)
+		{
+			tmp = x[i] - y[i];
+			result += tmp * tmp;
+		}
+		return sqrt(result);
+	}
+
 };
 
 int main()
@@ -230,7 +290,7 @@ int main()
 	fem.fragmentRead();
 	fem.s1Read();
 
-	cout << fem.simpleIter() << endl;
+	cout << "number of iterations:" << fem.simpleIter() << endl;
 
 	fem.printQ();
 

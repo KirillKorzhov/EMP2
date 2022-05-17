@@ -28,3 +28,12 @@ void vecADDvec(vector<double>& x, vector<double>& y)
 		x[i] += y[i];
 	}
 }
+
+void vecADDvecWithRelaxParam(double relaxParam, vector<double>& q, vector<double>& qPrev)
+{
+	double relaxParam2 = 1 - relaxParam;
+	for (int i = 0; i < q.size(); i++)
+	{
+		q[i] = q[i]*relaxParam + qPrev[i]*relaxParam2;
+	}
+}
