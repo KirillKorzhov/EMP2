@@ -1,5 +1,5 @@
 #include "config.h"
-
+#include <math.h>
 const double eps = 1e-12;
 const double delta = 1e-12;
 const int iterMax = 1e4;
@@ -23,17 +23,17 @@ double getGamma(int i, double x)
 
 double getF(int i, double x)
 {
-	return x*x-2;
+	return x;
 }
 
 double getS1(int i, double x)
 {
-	return x*x;
+	return x;
 }
 
 double getTheta(int i, double x, double u)
 {
-	return 2*x*getLambda(0,x,u);
+	return 1;
 }
 
 double getBeta(int i, double x, double u)

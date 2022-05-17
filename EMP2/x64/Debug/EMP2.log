@@ -1,3 +1,4 @@
-﻿  Source.cpp
-D:\sources\EMP2\EMP2\Source.cpp(257,1): warning C4267: инициализация: преобразование из "size_t" в "int"; возможна потеря данных
+﻿  BandMatrix.cpp
+D:\sources\EMP2\EMP2\BandMatrix.cpp(38,2): warning C4267: инициализация: преобразование из "size_t" в "int"; возможна потеря данных
+D:\sources\EMP2\EMP2\BandMatrix.cpp(55,21): warning C4267: инициализация: преобразование из "size_t" в "int"; возможна потеря данных
   EMP2.vcxproj -> D:\sources\EMP2\x64\Debug\EMP2.exe

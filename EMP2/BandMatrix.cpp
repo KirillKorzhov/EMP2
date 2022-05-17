@@ -34,7 +34,7 @@ void BandMatrix::solveLUx(vector<double>& b, vector<double>& x)
 
 void BandMatrix::solveUx(vector<double>& b, vector<double>& x)
 {
-	x[x.size() - 1] = b[b.size() - 1];
+	x[x.size() - 1] = b[b.size() - 1] / diag[b.size() - 1];
 	for (int i = x.size() - 2; i >= 0; i--)
 	{
 		x[i] = (b[i] - top[i] * x[i + 1]) / diag[i];

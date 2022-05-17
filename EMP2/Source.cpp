@@ -96,6 +96,15 @@ public:
 		makeGlobal();
 		double prevDiscrepancy = discrepancy(normDenominator);
 		bandMatrix.matrixToLU();
+		/*for (int i = 0; i < b.size(); i++)
+		{
+			cout << bandMatrix.bot[i] << " " << bandMatrix.diag[i] << " " << bandMatrix.top[i] << endl;
+		}*/
+		for (int i = 0; i < b.size(); i++)
+		{
+			cout << b[i] << " ";
+		}
+		cout << endl;
 		bandMatrix.solveLUx(b, q);
 		return prevDiscrepancy;
 	}
